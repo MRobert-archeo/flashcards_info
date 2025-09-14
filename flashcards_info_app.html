@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards de Traitement de l'Information</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Techno-Pastel Palette -->
+    <!-- Application Structure Plan: A single-page flashcard application with a centralized card view and surrounding controls. Users can navigate sequentially, shuffle the deck, and filter cards by category or search term. The core interaction is the click-to-flip card mechanism. This structure provides a clear, focused, and intuitive user experience tailored for study sessions, allowing for both linear and non-linear review methods. The inclusion of a search bar and category filters makes it a flexible tool for targeted revision. -->
+    <!-- Visualization & Content Choices: Report Info: List of IT-related topics -> Goal: Memorization/Study -> Presentation Method: Interactive HTML/CSS flashcards with category-themed colors -> Interaction: Click to flip, button navigation, category/search filtering, and shuffling. Color coding is used as a visual cue for each category, enhancing recognition and providing a logical structure to the content. -> Justification: This interactive format aids active recall, a proven study technique. The user can test their knowledge and get immediate feedback. Filtering and shuffling are key features that make the tool adaptable to different study needs. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        :root {
+            --card-height: 350px;
+            --card-width: 90%;
+            --background-color: #F8F8FF; /* Ghost White */
+            --text-color: #2F4F4F; /* Dark Slate Gray */
+            --primary-color: #4682B4; /* Steel Blue */
+            --secondary-color: #B0C4DE; /* Light Steel Blue */
+            
+            /* Techno-Pastel Palette */
+            --materiel-color: #AEC6CF; /* Pastel Blue */
+            --concepts-color: #B2D8D8; /* Light Cyan */
+            --outils-color: #F4A261; /* Burnt Orange */
+            --droit-color: #E27D60; /* Coral */
+            --reseaux-color: #79C2D0; /* Turquoise */
+            --societe-color: #8C6A5D; /* Taupe */
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+        }
+        .flashcard-container {
+            perspective: 1000px;
+            height: var(--card-height);
+            max-width: 600px;
+            width: var(--card-width);
+            margin: auto;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-front {
+            background-color: white;
+            border: 1px solid var(--secondary-color);
+        }
+        .card-back {
+            background-color: var(--secondary-color);
+            transform: rotateY(180deg);
+        }
+        .nav-button, .category-button, #shuffle-btn {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid var(--primary-color);
+        }
+        .nav-button:hover, .category-button:hover, #shuffle-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .category-button.active {
+            font-weight: bold;
+        }
+        .bg-materiel { background-color: var(--materiel-color); }
+        .bg-concepts { background-color: var(--concepts-color); }
+        .bg-outils { background-color: var(--outils-color); }
+        .bg-droit { background-color: var(--droit-color); }
+        .bg-reseaux { background-color: var(--reseaux-color); }
+        .bg-societe { background-color: var(--societe-color); }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            #app-ui {
+                display: none;
+            }
+            .print-view {
+                display: flex !important;
+                flex-wrap: wrap;
+                justify-content: space-around;
+                margin: 0;
+                padding: 0;
+            }
+            .print-card-container {
+                display: flex;
+                width: 100%;
+                margin: 1rem 0;
+                page-break-inside: avoid;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+            }
+            .print-card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 1rem;
+            }
+            .print-card-verso {
+                border-left: 1px dashed #ccc;
+            }
+            .print-card-materiel { border-color: var(--materiel-color); }
+            .print-card-concepts { border-color: var(--concepts-color); }
+            .print-card-outils { border-color: var(--outils-color); }
+            .print-card-droit { border-color: var(--droit-color); }
+            .print-card-reseaux { border-color: var(--reseaux-color); }
+            .print-card-societe { border-color: var(--societe-color); }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div id="app-ui" class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">Flashcards Traitement de l'Information</h1>
+            <p class="text-md sm:text-lg text-gray-600 mt-2">Un outil interactif pour vos révisions.</p>
+        </header>
+
+        <div class="mb-6">
+            <input type="text" id="search-input" placeholder="Rechercher une fiche..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[--primary-color] focus:border-[--primary-color] outline-none transition">
+        </div>
+
+        <div id="categories" class="flex flex-wrap justify-center gap-2 mb-8">
+        </div>
+
+        <main class="w-full">
+            <div id="flashcard-container" class="flashcard-container mb-4">
+                <div id="flashcard" class="flashcard">
+                    <div class="card-face card-front">
+                        <p id="card-recto" class="text-2xl font-semibold"></p>
+                    </div>
+                    <div class="card-face card-back">
+                        <p id="card-verso" class="text-base"></p>
+                    </div>
+                </div>
+            </div>
+             <p id="no-results" class="text-center text-gray-500 hidden">Aucune fiche ne correspond à votre recherche.</p>
+
+            <div id="navigation" class="flex items-center justify-between w-full max-w-xl mx-auto">
+                <button id="prev-btn" class="nav-button px-4 py-2 rounded-lg">&larr; Précédent</button>
+                <p id="progress" class="text-sm font-medium text-gray-700"></p>
+                <button id="next-btn" class="nav-button px-4 py-2 rounded-lg">Suivant &rarr;</button>
+            </div>
+            <div class="mt-8 text-center flex flex-col sm:flex-row justify-center gap-4">
+                <button id="print-btn" class="px-6 py-3 rounded-lg bg-[--primary-color] text-white font-semibold shadow-md hover:bg-opacity-90 transition">
+                    Imprimer les fiches
+                </button>
+                <button id="csv-btn" class="px-6 py-3 rounded-lg border border-[--primary-color] text-[--primary-color] font-semibold shadow-md hover:bg-[--primary-color] hover:text-white transition">
+                    Télécharger en CSV
+                </button>
+                <button id="shuffle-btn" class="px-6 py-3 rounded-lg border border-[--primary-color] text-[--primary-color] font-semibold shadow-md hover:bg-[--primary-color] hover:text-white transition">
+                    Mélanger les fiches
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div id="print-view" class="print-view hidden"></div>
+
+    <script>
+        const allCards = [
+            { recto: "Les outils d'édition d'images en trois dimensions", verso: "Logiciels de modélisation, de sculpture et de rendu 3D. Ils sont utilisés pour créer des images et des animations en trois dimensions. Exemples : Blender, Maya, 3ds Max.", category: "Matériel & Concepts" },
+            { recto: "L'ordinateur", verso: "Machine électronique programmable qui traite des informations. Il est composé d'une unité centrale, d'une mémoire et de périphériques d'entrée/sortie. Exemples : PC de bureau, ordinateur portable, smartphone.", category: "Matériel & Concepts" },
+            { recto: "Le processeur", verso: "Composant central de l'ordinateur qui exécute les instructions des programmes. C'est le 'cerveau' de la machine. Exemples : Intel Core i7, AMD Ryzen 5, Apple M1.", category: "Matériel & Concepts" },
+            { recto: "La mémoire", verso: "Composant qui stocke les données et les instructions des programmes. Il existe différents types de mémoire, comme la mémoire vive (RAM) et la mémoire morte (ROM). Exemples : RAM pour la mémoire vive, disques durs ou SSD pour le stockage.", category: "Matériel & Concepts" },
+            { recto: "La carte graphique", verso: "Composant qui génère et affiche des images à l'écran. Elle est essentielle pour les jeux vidéo et les applications 3D. Exemples : NVIDIA GeForce RTX, AMD Radeon RX.", category: "Matériel & Concepts" },
+            { recto: "Le disque dur", verso: "Périphérique de stockage qui stocke les données à long terme. Il peut être interne ou externe. Exemples : HDD (Hard Disk Drive), SSD (Solid State Drive).", category: "Matériel & Concepts" },
+            { recto: "Stocker, indexer, retrouver les données", verso: "Processus de gestion des données. Le stockage consiste à les enregistrer sur un support, l'indexation à les classer pour les retrouver facilement, et la recherche à les récupérer. Exemples : stocker un document sur un serveur, l'indexer avec des mots-clés, le retrouver via une recherche.", category: "Concepts" },
+            { recto: "Structures professionnelles de l'information", verso: "Organisations qui gèrent des collections de documents pour des publics spécifiques. Exemples : centres de documentation, bibliothèques, réseaux documentaires.", category: "Concepts" },
+            { recto: "Méthodologie et outils de la fonction documentaire", verso: "Ensemble des méthodes et des outils utilisés par les professionnels de la documentation pour gérer les informations. Exemples : la veille, l'indexation, le classement, la recherche d'informations.", category: "Concepts" },
+            { recto: "Langages documentaires", verso: "Langages normalisés qui permettent de décrire, d'indexer et de classer les documents pour faciliter leur recherche. Exemples : thésaurus, mots-clés, listes d'autorités.", category: "Concepts" },
+            { recto: "L'indexation", verso: "Processus de description et de classement des documents à l'aide de mots-clés, de catégories ou de résumés. Exemples : l'indexation d'un livre par sujet, l'ajout de tags à une photo.", category: "Concepts" },
+            { recto: "Les logiciels documentaires", verso: "Logiciels qui permettent de gérer des bases de données de documents. Ils sont utilisés dans les bibliothèques et les centres de documentation. Exemples : PMB, Koha, BCDI.", category: "Outils" },
+            { recto: "Le stockage de données", verso: "Processus d'enregistrement des données sur un support physique ou virtuel. Exemples : un disque dur interne, un serveur cloud, une clé USB.", category: "Outils" },
+            { recto: "La conservation long-terme des données", verso: "Ensemble des actions visant à assurer l'accessibilité et la pérennité des données numériques sur une longue période. Exemples : migration de format (passer d'un .doc à un .docx), sauvegardes régulières, utilisation de supports stables.", category: "Concepts" },
+            { recto: "L'interopérabilité des données", verso: "Capacité des systèmes d'information à échanger des données et à les interpréter. Exemples : un tableur qui peut lire un fichier CSV, un logiciel de traitement de texte qui peut ouvrir un PDF.", category: "Concepts" },
+            { recto: "Les métadonnées", verso: "Données sur les données. Elles décrivent les caractéristiques d'un document et facilitent sa recherche et son utilisation. Exemples : le titre, l'auteur, la date de création d'un fichier, les tags sur une photo.", category: "Concepts" },
+            { recto: "Les logiciels de DAO et de PAO", verso: "Logiciels de Dessin Assisté par Ordinateur et de Publication Assistée par Ordinateur. Exemples : AutoCAD pour le DAO, InDesign ou QuarkXPress pour la PAO.", category: "Outils" },
+            { recto: "Les bases de données", verso: "Ensemble de données structurées et stockées de manière organisée. Elles permettent de gérer de grandes quantités d'informations et de les interroger facilement. Exemples : MySQL, Oracle, MongoDB.", category: "Outils" },
+            { recto: "GED (gestion électronique de documents)", verso: "Logiciel qui permet de gérer le cycle de vie des documents électroniques, de leur création à leur archivage. Exemples : SharePoint, Alfresco, Nuxeo.", category: "Outils" },
+            { recto: "Les SIG", verso: "Systèmes d'Information Géographique. Logiciels qui permettent de visualiser, de gérer et d'analyser des données géospatiales. Exemples : ArcGIS, QGIS, Google Earth.", category: "Outils" },
+            { recto: "Les mails", verso: "Service de messagerie électronique qui permet d'envoyer et de recevoir des messages. Exemples : Gmail, Outlook, ProtonMail.", category: "Outils" },
+            { recto: "Les supports de stockage externes", verso: "Périphériques de stockage de données qui ne sont pas intégrés à l'ordinateur. Exemples : CD-ROM, DVD, clés USB et disques durs externes.", category: "Outils" },
+            { recto: "Les médias sociaux", verso: "Plateformes en ligne qui permettent aux utilisateurs d'interagir et de partager des informations. Exemples : Facebook, Twitter (X), Instagram, LinkedIn.", category: "Société & Tendances" },
+            { recto: "La gestion informatisée du personnel", verso: "Utilisation de logiciels pour gérer les ressources humaines. Exemples : paie, formation, gestion des congés, recrutement.", category: "Outils" },
+            { recto: "La gestion informatisée de projet", verso: "Utilisation de logiciels pour planifier, organiser et suivre les projets. Exemples : Trello, Asana, Jira.", category: "Outils" },
+            { recto: "Les newsletters", verso: "Courriels d'information envoyés régulièrement à une liste d'abonnés pour communiquer sur les activités d'une organisation. Exemples : Mailchimp, Sendinblue.", category: "Outils" },
+            { recto: "La gestion d'un site web", verso: "Ensemble des opérations nécessaires pour créer, mettre à jour et maintenir un site web. Exemples : gestion de contenu (CMS), référencement (SEO), maintenance technique.", category: "Outils" },
+            { recto: "Mémoire vive, mémoire morte, mémoire de stockage", verso: "Trois types de mémoire. La mémoire vive (RAM) est utilisée pour les données en cours de traitement. La mémoire morte (ROM) pour les données permanentes. La mémoire de stockage pour les données à long terme. Exemples : RAM (mémoire vive), SSD (stockage), BIOS (mémoire morte).", category: "Matériel & Concepts" },
+            { recto: "Les outils informatiques de mind-mapping", verso: "Logiciels qui permettent de créer des cartes mentales pour organiser des idées et des informations de manière visuelle. Exemples : XMind, MindMeister, Miro.", category: "Outils" },
+            { recto: "La photogrammétrie", verso: "Technique qui permet de créer des modèles 3D d'objets ou de lieux à partir de photographies. Exemples : création d'un modèle 3D d'un monument, d'un objet archéologique, d'un site naturel.", category: "Outils" },
+            { recto: "La blockchain", verso: "Technologie de stockage et de transmission d'informations qui fonctionne sans organe de contrôle centralisé. Exemples : les cryptomonnaies (Bitcoin), les registres de transactions sécurisés.", category: "Concepts" },
+            { recto: "Les CRM", verso: "Customer Relationship Management. Logiciels de gestion de la relation client. Exemples : Salesforce, HubSpot, Zoho CRM.", category: "Outils" },
+            { recto: "Les images numériques", verso: "Images sous forme de fichiers informatiques. Exemples : images matricielles (JPG, PNG), images vectorielles (SVG, AI).", category: "Concepts" },
+            { recto: "Le dessin vectoriel", verso: "Type d'image numérique qui utilise des formes géométriques pour représenter des images. Exemples : un logo d'entreprise, une illustration pour un site web, une carte géographique.", category: "Concepts" },
+            { recto: "Les outils de réunions à distance", verso: "Logiciels qui permettent de communiquer et de collaborer à distance. Exemples : Zoom, Microsoft Teams, Google Meet.", category: "Outils" },
+            { recto: "Le lidar", verso: "Technologie de télédétection qui permet de mesurer la distance entre un capteur et un objet en utilisant la lumière laser. Exemples : cartographie 3D de villes, numérisation de monuments historiques, détection de sites archéologiques.", category: "Outils" },
+            { recto: "Internet", verso: "Réseau informatique mondial qui relie des millions d'ordinateurs et de réseaux entre eux. Exemples : le web (sites web), la messagerie électronique, le partage de fichiers (P2P).", category: "Réseaux" },
+            { recto: "Le cloud", verso: "Service de stockage de données et d'applications sur des serveurs distants, accessibles via internet. Exemples : Google Drive, Dropbox, OneDrive.", category: "Réseaux" },
+            { recto: "Les réseaux", verso: "Systèmes qui relient des ordinateurs entre eux pour leur permettre de communiquer et de partager des ressources. Exemples : réseau local (LAN) d'une entreprise, réseau étendu (WAN) pour relier plusieurs sites.", category: "Réseaux" },
+            { recto: "Les VPN", verso: "Virtual Private Network. Réseau privé virtuel qui permet de naviguer sur internet de manière sécurisée et anonyme. Exemples : ExpressVPN, NordVPN, CyberGhost.", category: "Réseaux" },
+            { recto: "Intranet", verso: "Réseau informatique privé qui utilise les technologies d'internet. Il est utilisé par les entreprises pour partager des informations et des ressources avec leurs employés. Exemple : un site interne pour accéder aux documents et aux outils de l'entreprise.", category: "Réseaux" },
+            { recto: "Le très haut débit radio", verso: "Technologie de transmission de données à très haut débit qui utilise les ondes radio. Exemple : la 5G, la connexion internet par satellite.", category: "Réseaux" },
+            { recto: "Les cyberattaques", verso: "Attaques informatiques qui visent à voler des données, à perturber des systèmes ou à causer des dommages. Exemples : virus, rançongiciels, phishing.", category: "Droit & Sécurité" },
+            { recto: "La cybersécurité", verso: "Ensemble des mesures techniques et organisationnelles qui visent à protéger les systèmes informatiques contre les cyberattaques. Exemples : antivirus, pare-feu, chiffrement des données.", category: "Droit & Sécurité" },
+            { recto: "L'adresse IP", verso: "Numéro d'identification unique qui est attribué à chaque appareil connecté à internet. Exemples : IPv4 (ex: 192.168.1.1), IPv6.", category: "Réseaux" },
+            { recto: "Aspects juridiques de la reprographie", verso: "Règles juridiques qui régissent la reproduction de documents (photocopie, numérisation), notamment le droit d'auteur. Exemples : le droit de copie privée, les licences de reproduction.", category: "Droit & Sécurité" },
+            { recto: "La CNIL", verso: "Commission Nationale de l'Informatique et des Libertés. Elle veille à la protection des données personnelles. Exemples : contrôle des fichiers informatiques, sanction des manquements au RGPD.", category: "Droit & Sécurité" },
+            { recto: "Le RGPD", verso: "Règlement Général sur la Protection des Données. Règlement européen qui vise à renforcer la protection des données personnelles. Exemples : droit à l'oubli, droit à la portabilité des données, obligation de consentement.", category: "Droit & Sécurité" },
+            { recto: "Les logiciels propriétaires", verso: "Logiciels dont le code source est la propriété de leur éditeur. Exemples : Microsoft Office, Adobe Photoshop, AutoCAD.", category: "Droit & Sécurité" },
+            { recto: "Les logiciels libres", verso: "Logiciels dont le code source est accessible à tous. Exemples : Linux, Firefox, Gimp.", category: "Droit & Sécurité" },
+            { recto: "Les droits d'auteur (USA vs France)", verso: "Législation qui protège les œuvres de l'esprit. Le droit d'auteur français protège l'auteur, le copyright américain protège le droit d'exploitation de l'œuvre.", category: "Droit & Sécurité" },
+            { recto: "Les licences copyleft", verso: "Licences qui garantissent le droit d'utiliser, de modifier et de distribuer un logiciel, à condition que les copies et les versions modifiées restent sous la même licence. Exemple : la licence GPL.", category: "Droit & Sécurité" },
+            { recto: "L'open source", verso: "Mouvement qui promeut l'accès libre au code source des logiciels. Exemples : le système d'exploitation Android, la plateforme de développement WordPress.", category: "Droit & Sécurité" },
+            { recto: "Shared source", verso: "Modèle de licence qui permet aux développeurs d'accéder au code source d'un logiciel pour le consulter, mais pas pour le modifier ou le redistribuer librement. Exemple : certaines licences de Microsoft.", category: "Droit & Sécurité" },
+            { recto: "Hadopi: Loi Création et Internet", verso: "Loi française qui vise à lutter contre le téléchargement illégal en sanctionnant les internautes qui partagent des œuvres protégées par le droit d'auteur. Exemple : le système d'avertissements (lettres d'avertissement et sanction).", category: "Droit & Sécurité" },
+            { recto: "La loi DADVSI", verso: "Loi française qui transpose en droit français une directive européenne sur le droit d'auteur. Exemples : l'obligation de protéger les œuvres numériques, la sanction du piratage.", category: "Droit & Sécurité" },
+            { recto: "Les archives électroniques", verso: "Documents numériques qui ont une valeur d'archive. Exemples : courriels, bases de données, documents de travail, documents de gestion.", category: "Concepts" },
+            { recto: "La loi « fake news »", verso: "Loi française qui vise à lutter contre la diffusion de fausses informations sur internet en période électorale. Exemples : l'obligation des plateformes de transparence, la saisine du juge pour faire retirer des contenus.", category: "Droit & Sécurité" },
+            { recto: "Le droit à la déconnexion", verso: "Droit des salariés de ne pas être sollicités en dehors de leurs heures de travail. Exemple : un salarié peut refuser de répondre à un mail professionnel en dehors de ses horaires de travail.", category: "Société & Tendances" },
+            { recto: "Vie privée et travail", verso: "Enjeux de la protection de la vie privée des salariés dans le cadre du travail. Exemples : la surveillance des mails professionnels, la géolocalisation des véhicules de fonction.", category: "Société & Tendances" },
+            { recto: "NTIC et relations du travail", verso: "Nouvelles Technologies de l'Information et de la Communication et leur impact sur les relations de travail. Exemples : télétravail, droit à la déconnexion, flexibilité des horaires de travail.", category: "Société & Tendances" },
+            { recto: "Informatique et relation avec les usagers et le public", verso: "Utilisation des outils numériques pour améliorer les interactions avec le public et les services publics. Exemples : e-administration, applications mobiles pour accéder à des services publics, sites web pour informer le public.", category: "Société & Tendances" },
+            { recto: "Les œuvres conçues par les IA", verso: "Enjeux juridiques et éthiques liés à la création d'œuvres par des intelligences artificielles. Exemples : la question du droit d'auteur, la propriété intellectuelle des œuvres.", category: "Société & Tendances" },
+            { recto: "Chiffres clés des pratiques culturelles numériques", verso: "Données statistiques sur l'utilisation des outils numériques pour les pratiques culturelles. Exemples : le nombre d'heures de streaming, le nombre d'abonnés aux plateformes de vidéo à la demande.", category: "Société & Tendances" },
+            { recto: "La French Tech", verso: "Initiative gouvernementale qui vise à soutenir la croissance des start-up françaises du numérique. Exemples : des aides financières, des incubateurs, des événements de mise en réseau.", category: "Société & Tendances" },
+            { recto: "La cryptomonnaie", verso: "Monnaie numérique qui utilise des techniques de cryptographie pour sécuriser les transactions. Exemples : Bitcoin, Ethereum, Ripple.", category: "Concepts" },
+            { recto: "Les GAFAM", verso: "Acronyme qui désigne les cinq grandes entreprises du numérique. Exemples : Google, Amazon, Facebook (Meta), Apple et Microsoft.", category: "Société & Tendances" },
+            { recto: "L'IA", verso: "Intelligence Artificielle. Science qui vise à créer des machines capables de simuler l'intelligence humaine. Exemples : les assistants vocaux (Siri), les logiciels de traduction automatique.", category: "Société & Tendances" },
+            { recto: "Le machine learning", verso: "Sous-domaine de l'intelligence artificielle qui permet aux machines d'apprendre à partir de données. Exemples : la reconnaissance faciale, la recommandation de produits sur un site d'e-commerce.", category: "Société & Tendances" }
+        ];
+
+        const categoryMap = {
+            'Matériel & Concepts': 'materiel',
+            'Concepts': 'concepts',
+            'Outils': 'outils',
+            'Droit & Sécurité': 'droit',
+            'Réseaux': 'reseaux',
+            'Société & Tendances': 'societe'
+        };
+
+        let currentCards = [...allCards];
+        let currentIndex = 0;
+        let isFlipped = false;
+
+        const flashcard = document.getElementById('flashcard');
+        const cardRecto = document.getElementById('card-recto');
+        const cardVerso = document.getElementById('card-verso');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const progress = document.getElementById('progress');
+        const searchInput = document.getElementById('search-input');
+        const categoriesContainer = document.getElementById('categories');
+        const noResults = document.getElementById('no-results');
+        const navigation = document.getElementById('navigation');
+        const flashcardContainer = document.getElementById('flashcard-container');
+        const printBtn = document.getElementById('print-btn');
+        const csvBtn = document.getElementById('csv-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const printView = document.getElementById('print-view');
+        
+        function updateCard() {
+            if (currentCards.length > 0) {
+                flashcardContainer.classList.remove('hidden');
+                navigation.classList.remove('hidden');
+                noResults.classList.add('hidden');
+                
+                const card = currentCards[currentIndex];
+                cardRecto.textContent = card.recto;
+                cardVerso.textContent = card.verso;
+                progress.textContent = `${currentIndex + 1} / ${currentCards.length}`;
+
+                const categoryClass = categoryMap[card.category] || 'concepts';
+                document.querySelector('.card-back').classList.remove(...Object.values(categoryMap).map(c => `bg-${c}`));
+                if (categoryClass) {
+                    document.querySelector('.card-back').classList.add(`bg-${categoryClass}`);
+                }
+                
+                isFlipped = false;
+                flashcard.classList.remove('is-flipped');
+            } else {
+                flashcardContainer.classList.add('hidden');
+                navigation.classList.add('hidden');
+                noResults.classList.remove('hidden');
+            }
+        }
+
+        function createCategories() {
+            const categories = ['Toutes', ...new Set(allCards.map(card => card.category))];
+            categories.forEach(category => {
+                const button = document.createElement('button');
+                button.textContent = category;
+                const categoryClass = categoryMap[category] || '';
+                button.classList.add('category-button', 'px-3', 'py-1', 'rounded-full', 'text-sm', 'bg-white', 'text-[--text-color]');
+                button.style.borderWidth = '1px';
+                button.style.borderColor = `var(--${categoryClass}-color, var(--primary-color))`;
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.category-button').forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.backgroundColor = 'white';
+                        btn.style.color = 'var(--text-color)';
+                    });
+                    button.classList.add('active');
+                    button.style.backgroundColor = `var(--${categoryClass}-color, var(--primary-color))`;
+                    button.style.color = 'white';
+
+                    filterByCategory(category);
+                });
+                categoriesContainer.appendChild(button);
+            });
+            document.querySelector('.category-button').click();
+        }
+
+        function filterByCategory(category) {
+            searchInput.value = '';
+            if (category === 'Toutes') {
+                currentCards = [...allCards];
+            } else {
+                currentCards = allCards.filter(card => card.category === category);
+            }
+            currentIndex = 0;
+            updateCard();
+        }
+
+        function filterBySearch(searchTerm) {
+            const activeCategoryButton = document.querySelector('.category-button.active');
+            activeCategoryButton.classList.remove('active');
+            document.querySelector('.category-button').classList.add('active');
+
+            const lowerCaseTerm = searchTerm.toLowerCase();
+            currentCards = allCards.filter(card => 
+                card.recto.toLowerCase().includes(lowerCaseTerm) || 
+                card.verso.toLowerCase().includes(lowerCaseTerm)
+            );
+            currentIndex = 0;
+            updateCard();
+        }
+        
+        function shuffleCards() {
+            for (let i = currentCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentCards[i], currentCards[j]] = [currentCards[j], currentCards[i]];
+            }
+            currentIndex = 0;
+            updateCard();
+        }
+
+        flashcard.addEventListener('click', () => {
+            isFlipped = !isFlipped;
+            flashcard.classList.toggle('is-flipped');
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentCards.length > 0) {
+                currentIndex = (currentIndex - 1 + currentCards.length) % currentCards.length;
+                updateCard();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentCards.length > 0) {
+                currentIndex = (currentIndex + 1) % currentCards.length;
+                updateCard();
+            }
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            filterBySearch(e.target.value);
+        });
+
+        shuffleBtn.addEventListener('click', shuffleCards);
+
+        document.addEventListener('keydown', (e) => {
+            if (searchInput === document.activeElement) return;
+            if (e.key === 'ArrowLeft') {
+                prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                nextBtn.click();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                flashcard.click();
+            }
+        });
+
+        printBtn.addEventListener('click', () => {
+            printView.innerHTML = '';
+            allCards.forEach(card => {
+                const cardContainer = document.createElement('div');
+                const categoryClass = categoryMap[card.category] ? `print-card-${categoryMap[card.category]}` : '';
+                cardContainer.className = `print-card-container ${categoryClass}`;
+
+                const rectoCard = document.createElement('div');
+                rectoCard.className = 'print-card print-card-recto';
+                rectoCard.innerHTML = `<h2 class="font-bold text-lg">${card.recto}</h2>`;
+
+                const versoCard = document.createElement('div');
+                versoCard.className = 'print-card print-card-verso';
+                versoCard.innerHTML = `<p class="text-sm">${card.verso}</p>`;
+
+                cardContainer.appendChild(rectoCard);
+                cardContainer.appendChild(versoCard);
+                printView.appendChild(cardContainer);
+            });
+            window.print();
+        });
+
+        csvBtn.addEventListener('click', () => {
+            const csvData = [
+                'recto_texte,verso_texte,etiquette',
+                ...allCards.map(card => `"${card.recto.replace(/"/g, '""')}","${card.verso.replace(/"/g, '""')}","${card.category.replace(/"/g, '""')}"`)
+            ].join('\n');
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'flashcards_traitement_information.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+        
+        createCategories();
+        updateCard();
+    </script>
+</body>
+</html>
